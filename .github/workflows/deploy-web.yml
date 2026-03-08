@@ -3,10 +3,6 @@ name: Deploy Web
 on:
   push:
     branches: [main]
-    paths:
-      - 'apps/web/**'
-      - 'packages/**'
-      - bun.lock
   workflow_dispatch:
 
 jobs:
@@ -20,28 +16,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - name: Install Dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build Shared Packages
-        run: bun --filter './packages/*' build
+        run: pnpm install --frozen-lockfile
 
       - name: Build Web App
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY }}
           VITE_WORKER_URL: ${{ secrets.VITE_WORKER_URL }}
-        run: bun --filter @muendlich-plus/web build
+        run: pnpm build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/web
           command: pages deploy dist --project-name=muendlich-plus
